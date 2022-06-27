@@ -24,7 +24,11 @@ class GenerateLocalesCommand extends Command {
 
   @override
   Future<void> execute() async {
+    final complexMode = args.isNotEmpty && args.length > 1 ? true : false;
     final inputPath = args.isNotEmpty ? args.first : 'assets/locales';
+    final langsOutputPath = complexMode ? args[1] : 'lib/generated';
+    final keysOutputPath = complexMode ? args[2] : 'lib/generated';
+    final translationKeysOutputPath = complexMode ? args[3] : 'lib/generated';
 
     if (!await Directory(inputPath).exists()) {
       LogService.error(
@@ -68,33 +72,63 @@ class GenerateLocalesCommand extends Command {
       });
     });
 
-    final parsedKeys =
-        keys.map((e) => '\tstatic const $e = \'$e\';').join('\n');
+    final parsedKeys = complexMode
+        ? keys
+            .map((e) => '\tstatic const ${e.toUpperCase()} = \'$e\';')
+            .join('\n')
+        : keys.map((e) => '\tstatic const $e = \'$e\';').join('\n');
 
-    final parsedLocales = StringBuffer('\n');
+    final parsedLocales = StringBuffer();
     final translationsKeys = StringBuffer();
     locales.forEach((key, value) {
-      parsedLocales.writeln('\tstatic const $key = {');
-      translationsKeys.writeln('\t\t\'$key\' : Locales.$key,');
+      if (complexMode) {
+        parsedLocales.writeln('const Map<String, String> $key = {');
+        translationsKeys.writeln('\t\t\'$key\' :$key,');
+      } else {
+        parsedLocales.writeln('\tstatic const $key = {');
+        translationsKeys.writeln('\t\t\'$key\' : Locales.$key,');
+      }
       value.forEach((key, value) {
         value = _replaceValue(value);
         if (RegExp(r'^[0-9]|[!@#<>?":`~;[\]\\|=+)(*&^%-\s]').hasMatch(key)) {
           throw CliException(
               LocaleKeys.error_special_characters_in_key.trArgs([key]));
         }
-        parsedLocales.writeln('\t\t\'$key\': \'$value\',');
+        if (complexMode) {
+          parsedLocales.writeln('\t\'$key\': \'$value\',');
+        } else {
+          parsedLocales.writeln('\t\t\'$key\': \'$value\',');
+        }
       });
-      parsedLocales.writeln('\t};');
+      if (complexMode) {
+        parsedLocales.writeln('};');
+      } else {
+        parsedLocales.writeln('\t};');
+      }
+      if (complexMode) {
+        GenerateLocaleLangsSample(parsedLocales.toString(),
+                path:
+                    '$langsOutputPath${langsOutputPath.endsWith('/') ? '' : '/'}$key.dart')
+            .create(skipFormatter: true);
+        parsedLocales.clear();
+      }
     });
 
-    var newFileModel =
-        Structure.model('locales', 'generate_locales', false, on: onCommand);
+    if (complexMode) {
+      GenerateLocaleKeysSample(parsedKeys, path: keysOutputPath)
+          .create(skipFormatter: true);
+      GenerateLocaleTranslationKeysSample(translationsKeys.toString(),
+              path: translationKeysOutputPath)
+          .create(skipFormatter: true);
+    } else {
+      var newFileModel =
+          Structure.model('locales', 'generate_locales', false, on: onCommand);
 
-    GenerateLocalesSample(
-            parsedKeys, parsedLocales.toString(), translationsKeys.toString(),
-            path: '${newFileModel.path}.g.dart')
-        .create();
-
+      GenerateLocalesSample(
+              parsedKeys, parsedLocales.toString(), translationsKeys.toString(),
+              path: '${newFileModel.path}.g.dart')
+          .create();
+    }
     LogService.success(LocaleKeys.sucess_locale_generate.tr);
   }
 
@@ -122,7 +156,7 @@ class GenerateLocalesCommand extends Command {
           'get generate locales assets/locales on locales');
 
   @override
-  int get maxParameters => 1;
+  int get maxParameters => 4;
 }
 
 String _replaceValue(String value) {

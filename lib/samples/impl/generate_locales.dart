@@ -32,3 +32,58 @@ class Locales {
 }
 ''';
 }
+
+class GenerateLocaleLangsSample extends Sample {
+  final String _locales;
+  GenerateLocaleLangsSample( this._locales,
+      {String path = 'lib/generated/locales.dart'})
+      : super(path, overwrite: true);
+
+  @override
+  String get content => '''
+// ignore_for_file: constant_identifier_names, file_names
+
+$_locales
+''';
+}
+
+class GenerateLocaleTranslationKeysSample extends Sample {
+  final String _translationsKeys;
+  GenerateLocaleTranslationKeysSample(this._translationsKeys,
+      {String path = 'lib/generated/translation.dart'})
+      : super(path, overwrite: true);
+
+  @override
+  String get content => '''
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+class TranslationService extends Translations {
+\tstatic Locale? get locale => Get.deviceLocale;
+
+\tstatic const fallbackLocale = Locale('en', 'US');
+
+\t@override
+\tMap<String, Map<String, String>> get keys => {
+$_translationsKeys
+\t};
+}
+''';
+}
+
+class GenerateLocaleKeysSample extends Sample {
+  final String _keys;
+  GenerateLocaleKeysSample(this._keys,
+      {String path = 'lib/generated/locale_keys.dart'})
+      : super(path, overwrite: true);
+
+  @override
+  String get content => '''
+// ignore_for_file: constant_identifier_names
+
+class LocaleKeys {
+\tLocaleKeys._();
+$_keys
+}
+''';
+}
